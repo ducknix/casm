@@ -1,0 +1,5 @@
+@build
+gcc src/codegen.c src/lexer.c src/parser.c src/opts.c src/main.c -o ccasm
+
+@install
+sudo cp ./ccasm /usr/bin/. -v

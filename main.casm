@@ -1,0 +1,6 @@
+
+'Hello World
+
+func main {
+	sys_call(4, 1, "Hello World", &strlen&);
+}
