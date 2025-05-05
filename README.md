@@ -9,7 +9,7 @@ Below is a comparison of the same "Hello World" program written in CASM and NASM
 ### Hello World in CASM
 ```
 func main {
-    sys_call(4, 1, "Hello World", &strlen&);
+    sys_call(4, 1, "Hello World", &strlen&);    ' -> move(a, 4); move(b, 1); move(c, "Hello World!"); move(d, 12);
 }
 ```
 
