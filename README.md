@@ -1,6 +1,6 @@
-# CASM - Custom Simplified Assembly Compiler
+# CASM - C-Like Assembly Compiler
 
-CASM is a compiler that transforms a custom assembly-like language into x86 NASM assembly code. It provides a more readable and programmer-friendly syntax while maintaining the power of low-level assembly programming.
+CASM is a compiler that transforms a c-like assembly language into x86 NASM assembly code. It provides a more readable and programmer-friendly syntax while maintaining the power of low-level assembly programming.
 
 ## CASM vs NASM Comparison
 
