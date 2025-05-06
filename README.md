@@ -70,7 +70,7 @@ The CASM language consists of the following basic structures:
 ### Functions
 
 ```
-func function_name {
+func label_name {
     // Commands
 }
 ```
