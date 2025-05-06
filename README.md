@@ -33,7 +33,7 @@ _start:
     int 0x80        ; Make system call
 ```
 
-As you can see, CASM offers a more readable syntax. Register names are more intuitive (a, b, c, d), commands are more descriptive (move, call), and the syntax is closer to C programming language structure.
+As you can see, CASM offers a more readable syntax. Register names are more intuitive (&1, &2, &3, &4, ...), commands are more descriptive (move, call), and the syntax is closer to C programming language structure.
 
 ## About the Project
 
