@@ -1,7 +1,7 @@
 #---------------------------------------------
 # Project Info
 #---------------------------------------------
-PROJECT_NAME           = "Mini C Compiler"
+PROJECT_NAME           = "CASM Compiler"
 PROJECT_BRIEF          = "A simple C-like compiler that generates NASM assembly."
 PROJECT_NUMBER         = "v0.1"
 OUTPUT_LANGUAGE        = English
