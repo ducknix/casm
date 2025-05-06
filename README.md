@@ -9,7 +9,7 @@ Below is a comparison of the same "Hello World" program written in CASM and NASM
 ### Hello World in CASM
 ```
 func main {
-    sys_call(4, 1, "Hello World", &strlen&);    'call sys_write
+    syscall(4, 1, "Hello World", &strlen&);    'call sys_write
 }
 ```
 
@@ -87,21 +87,28 @@ jump_equal(label);             ' Jump if equal
 return();                      ' Return
 ```
 
-## sys_call
+## syscall
 
 ```
-sys_call(4, 1, "Hello", &strlen&);  ' sys_write with auto string length
+syscall(4, 1, "Hello", &strlen&);  ' sys_write with auto string length
 ```
 
-### Variables
+### Registers
 
-In CASM, you can use variable names like `a`, `b`, `c`, `d` to represent registers. These are converted to `eax`, `ebx`, `ecx`, `edx` registers in NASM, respectively.
+| CASM 	| 32 Bit 	| 64 Bit 	|
+|------	|--------	|--------	|
+| &1   	| EAX    	| RAX    	|
+| &2   	| EBX    	| RBX    	|
+| &3   	| ECX    	| RCX    	|
+| &4   	| EDX    	| RDX    	|
+| &5   	| EDI    	| RDI    	|
+| &6   	| ESI    	| RSI    	|
 
 ### String Support
 
 ```
-move(c, "Hello World");    ' Supports string literals
-move(d, &strlen&);         ' Automatic string length calculation
+move(&3, "Hello World");    ' Supports string literals
+move(&4, &strlen&);         ' Automatic string length calculation
 ```
 
 This code is converted into a NASM assembly program that prints "Hello World" to standard output and exits.
@@ -141,11 +148,9 @@ The compiler converts CASM code into an assembly file in NASM format. The genera
 The current version has some limitations:
 
 1. Only supports basic assembly commands
-2. Limited number of registers (`eax`, `ebx`, `ecx`, `edx`) are supported
-3. Advanced memory addressing mechanisms are not available
-4. Currently supports conversion to NASM code, but does not produce executable files directly
-5. Lack of optimization for 64-bit x86_64 architecture
-6. String length calculation with `&strlen&` has limitations, especially when used with the `move` instruction
+2. Advanced memory addressing mechanisms are not available
+3. Currently supports conversion to NASM code, but does not produce executable files directly
+4. Lack of optimization for 64-bit x86_64 architecture
 
 ## Contributing
 

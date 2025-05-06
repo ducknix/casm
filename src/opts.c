@@ -1,8 +1,3 @@
-/**
- * @file opts.c
- * @brief Command-line option parsing and configuration extraction.
- */
-
 #include "opts.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -10,49 +5,36 @@
 
 #define VERSION "1.0.0"
 
-/**
- * @brief Parses command-line arguments into option structures.
- *
- * Matches arguments against known options and assigns values when necessary.
- *
- * @param argc Argument count.
- * @param argv Argument vector.
- * @param opts Array of supported options.
- * @param num_opts Number of defined options.
- */
 void parse_options(int argc, char *argv[], Option *opts, int num_opts) {
-  // Process all arguments starting from index 1 (skip program name)
+
   for (int i = 1; i < argc; i++) {
     bool found = false;
 
-    // Check each defined option
     for (int j = 0; j < num_opts; j++) {
-      // Match long or short form
+
       if ((opts[j].name && strcmp(argv[i], opts[j].name) == 0) ||
           (opts[j].shortName && strcmp(argv[i], opts[j].shortName) == 0)) {
 
         found = true;
 
-        // If the option requires a value, grab the next argument
         if (opts[j].hasValue) {
           if (i + 1 < argc && argv[i + 1][0] != '-') {
             opts[j].value = argv[i + 1];
-            i++; // Skip the value on the next iteration
+            i++; 
           } else {
             fprintf(stderr, "Warning: %s option requires a value.\n", argv[i]);
           }
         } else {
-          // For flag-style options, set a dummy value like "1"
+
           opts[j].value = "1";
         }
         break;
       }
     }
 
-    // If argument was not a known option
     if (!found) {
       if (argv[i][0] != '-') {
-        // Assume it's the input file if not already set
+
         bool assigned = false;
         for (int j = 0; j < num_opts; j++) {
           if (strcmp(opts[j].name, "--input") == 0 && opts[j].value == NULL) {
@@ -72,17 +54,8 @@ void parse_options(int argc, char *argv[], Option *opts, int num_opts) {
   }
 }
 
-/**
- * @brief Converts parsed options into a structured program configuration.
- *
- * Applies default values and handles automatic output filename generation.
- *
- * @param opts Array of parsed options.
- * @param num_opts Number of options.
- * @param config Pointer to the program configuration struct to populate.
- */
 void extract_config(Option *opts, int num_opts, ProgramConfig *config) {
-  // Default values
+
   config->verbose = false;
   config->is32Bit = true;
   config->showHelp = false;
@@ -90,7 +63,6 @@ void extract_config(Option *opts, int num_opts, ProgramConfig *config) {
   config->inputFile = NULL;
   config->outputFile = NULL;
 
-  // Map options to configuration
   for (int i = 0; i < num_opts; i++) {
     if (opts[i].value) {
       if (strcmp(opts[i].name, "--input") == 0) {
@@ -111,12 +83,11 @@ void extract_config(Option *opts, int num_opts, ProgramConfig *config) {
     }
   }
 
-  // If output file is not specified, generate from input filename
   if (config->inputFile && !config->outputFile) {
     char *dot = strrchr(config->inputFile, '.');
     if (dot) {
       size_t base_len = dot - config->inputFile;
-      char *output = (char *)malloc(base_len + 5); // ".asm" + null terminator
+      char *output = (char *)malloc(base_len + 5); 
       if (output) {
         strncpy(output, config->inputFile, base_len);
         strcpy(output + base_len, ".asm");
@@ -133,13 +104,6 @@ void extract_config(Option *opts, int num_opts, ProgramConfig *config) {
   }
 }
 
-/**
- * @brief Prints help and usage information to the terminal.
- *
- * @param program_name The name of the executable.
- * @param opts Array of defined options.
- * @param num_opts Number of options.
- */
 void print_help(const char *program_name, Option *opts, int num_opts) {
   printf("Usage: %s [options] <input-file>\n\n", program_name);
   printf("Available options:\n");
@@ -159,9 +123,6 @@ void print_help(const char *program_name, Option *opts, int num_opts) {
   printf("  %s program.casm -v\n", program_name);
 }
 
-/**
- * @brief Prints version information of the compiler.
- */
 void print_version() {
   printf("CASM Compiler v%s\n", VERSION);
   printf("A C-like Assembly language compiler.\n");

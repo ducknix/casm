@@ -3,9 +3,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-/**
- * @brief Allocates and initializes a new AST node.
- */
 ASTNode *new_ast_node(TokenType type, const char *value) {
   ASTNode *node = (ASTNode *)malloc(sizeof(ASTNode));
   node->type = type;
@@ -17,9 +14,6 @@ ASTNode *new_ast_node(TokenType type, const char *value) {
   return node;
 }
 
-/**
- * @brief Recursively frees an entire AST subtree.
- */
 void free_ast_node(ASTNode *node) {
   if (node) {
     free(node->value);
@@ -30,9 +24,6 @@ void free_ast_node(ASTNode *node) {
   }
 }
 
-/**
- * @brief Links `prev` pointers in a linear AST chain and within label blocks.
- */
 void connect_prev_pointers(ASTNode *head) {
   if (!head)
     return;
@@ -60,9 +51,6 @@ void connect_prev_pointers(ASTNode *head) {
   }
 }
 
-/**
- * @brief Parses an individual expression.
- */
 ASTNode *parse_expression(Token **tokens) {
   if (!tokens || !*tokens)
     return NULL;
@@ -95,12 +83,9 @@ ASTNode *parse_expression(Token **tokens) {
   return NULL;
 }
 
-/**
- * @brief Parses syscall parameters as a comma-separated list.
- */
 ASTNode *parse_syscall_params(Token **tokens) {
   if (!*tokens || (*tokens)->type != TOKEN_LPAREN) {
-    fprintf(stderr, "Expected '(' after sys_call.\n");
+    fprintf(stderr, "Expected '(' after syscall.\n");
     return NULL;
   }
 
@@ -112,7 +97,7 @@ ASTNode *parse_syscall_params(Token **tokens) {
   if (*tokens && (*tokens)->type != TOKEN_RPAREN) {
     ASTNode *param = parse_expression(tokens);
     if (!param) {
-      fprintf(stderr, "Expected parameter in sys_call.\n");
+      fprintf(stderr, "Expected parameter in syscall.\n");
       return NULL;
     }
 
@@ -123,7 +108,7 @@ ASTNode *parse_syscall_params(Token **tokens) {
 
       param = parse_expression(tokens);
       if (!param) {
-        fprintf(stderr, "Expected parameter after comma in sys_call.\n");
+        fprintf(stderr, "Expected parameter after comma in syscall.\n");
         free_ast_node(params_head);
         return NULL;
       }
@@ -137,7 +122,7 @@ ASTNode *parse_syscall_params(Token **tokens) {
   if (*tokens && (*tokens)->type == TOKEN_RPAREN) {
     *tokens = (*tokens)->next;
   } else {
-    fprintf(stderr, "Expected ')' after sys_call parameters.\n");
+    fprintf(stderr, "Expected ')' after syscall parameters.\n");
     free_ast_node(params_head);
     return NULL;
   }
@@ -145,9 +130,6 @@ ASTNode *parse_syscall_params(Token **tokens) {
   return params_head;
 }
 
-/**
- * @brief Parses a single statement (e.g., instruction, jump, return).
- */
 ASTNode *parse_statement(Token **tokens) {
   if (!tokens || !*tokens)
     return NULL;
@@ -233,9 +215,9 @@ ASTNode *parse_statement(Token **tokens) {
   }
 
   if (current->type == TOKEN_SYS_CALL ||
-      strcmp(current->value, "sys_call") == 0) {
+      strcmp(current->value, "syscall") == 0) {
     *tokens = current->next;
-    ASTNode *node = new_ast_node(TOKEN_SYS_CALL, "sys_call");
+    ASTNode *node = new_ast_node(TOKEN_SYS_CALL, "syscall");
     node->left = parse_syscall_params(tokens);
     return node;
   }
@@ -270,9 +252,6 @@ ASTNode *parse_statement(Token **tokens) {
   return NULL;
 }
 
-/**
- * @brief Parses a block of statements enclosed in braces.
- */
 ASTNode *parse_block(Token **tokens) {
   if (!*tokens || (*tokens)->type != TOKEN_LBRACE) {
     fprintf(stderr, "Expected '{'.\n");
@@ -309,7 +288,7 @@ ASTNode *parse_block(Token **tokens) {
   }
 
   if (*tokens && (*tokens)->type == TOKEN_RBRACE) {
-    *tokens = (*tokens)->next; // Skip closing brace
+    *tokens = (*tokens)->next; 
   } else {
     fprintf(stderr, "Expected '}'.\n");
     return NULL;
@@ -320,21 +299,16 @@ ASTNode *parse_block(Token **tokens) {
   return block_node;
 }
 
-/**
- * @brief Parses a label or function declaration followed by a block of code.
- */
 ASTNode *parse_label(Token **tokens) {
   if (!tokens || !*tokens)
     return NULL;
 
-  // Check if it's a label/function declaration
   if (!((*tokens)->type == TOKEN_LABEL_KW)) {
     return NULL;
   }
 
-  *tokens = (*tokens)->next; // Skip 'label'/'func' token
+  *tokens = (*tokens)->next; 
 
-  // Get the label name
   if (!*tokens ||
       ((*tokens)->type != TOKEN_LABEL && (*tokens)->type != TOKEN_IDENTIFIER)) {
     fprintf(stderr, "Expected function name.\n");
@@ -344,7 +318,6 @@ ASTNode *parse_label(Token **tokens) {
   ASTNode *label_node = new_ast_node(TOKEN_LABEL, (*tokens)->value);
   *tokens = (*tokens)->next;
 
-  // Parse the block following the label
   ASTNode *block = parse_block(tokens);
   if (!block) {
     fprintf(stderr, "Failed to parse function block.\n");
@@ -356,9 +329,6 @@ ASTNode *parse_label(Token **tokens) {
   return label_node;
 }
 
-/**
- * @brief Parses all tokens into an Abstract Syntax Tree (AST).
- */
 ASTNode *parse_all(Token **tokens) {
   ASTNode *head = NULL;
   ASTNode *tail = NULL;
@@ -366,13 +336,11 @@ ASTNode *parse_all(Token **tokens) {
   while (*tokens) {
     ASTNode *node = NULL;
 
-    // Check if this is a label or function declaration
     if ((*tokens)->type == TOKEN_LABEL_KW) {
       node = parse_label(tokens);
     } else {
       node = parse_statement(tokens);
 
-      // Accept semicolon after statements
       if (*tokens && (*tokens)->type == TOKEN_SEMICOLON) {
         *tokens = (*tokens)->next;
       }
@@ -383,14 +351,13 @@ ASTNode *parse_all(Token **tokens) {
       if (*tokens) {
         fprintf(stderr, "Current token: %s (Type: %d)\n", (*tokens)->value,
                 (*tokens)->type);
-        *tokens = (*tokens)->next; // Skip problematic token and try to continue
+        *tokens = (*tokens)->next; 
       } else {
-        break; // No more tokens
+        break; 
       }
-      continue; // Try to recover and parse the next statement/label
+      continue; 
     }
 
-    // Add the parsed node to the linked list
     if (!head)
       head = tail = node;
     else {

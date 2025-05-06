@@ -5,16 +5,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-/**
- * @brief Creates a new token of the specified type with the given value.
- *
- * This function allocates memory for a new token, initializes its type,
- * assigns its value, and sets the next pointer to NULL.
- *
- * @param type The type of the token (e.g., TOKEN_MOVE, TOKEN_ADD).
- * @param value The string value associated with the token.
- * @return Token* A pointer to the newly created token.
- */
 Token *new_token(TokenType type, const char *value) {
   Token *token = (Token *)malloc(sizeof(Token));
   token->type = type;
@@ -23,14 +13,6 @@ Token *new_token(TokenType type, const char *value) {
   return token;
 }
 
-/**
- * @brief Frees the memory allocated for the list of tokens.
- *
- * This function traverses the linked list of tokens and frees the memory
- * for each token's value and the token structure itself.
- *
- * @param tokens The head of the token list to be freed.
- */
 void free_tokens(Token *tokens) {
   Token *current = tokens;
   while (current != NULL) {
@@ -41,17 +23,6 @@ void free_tokens(Token *tokens) {
   }
 }
 
-/**
- * @brief Adds a new token to the end of the linked list.
- *
- * This function creates a new token with the specified type and value,
- * and appends it to the linked list of tokens.
- *
- * @param head A pointer to the head of the token list.
- * @param tail A pointer to the tail of the token list.
- * @param type The type of the token (e.g., TOKEN_MOVE, TOKEN_ADD).
- * @param value The string value associated with the token.
- */
 void add_token(Token **head, Token **tail, TokenType type, const char *value) {
   Token *token = new_token(type, value);
   if (*head == NULL)
@@ -61,17 +32,6 @@ void add_token(Token **head, Token **tail, TokenType type, const char *value) {
   *tail = token;
 }
 
-/**
- * @brief Tokenizes the given source code into a linked list of tokens.
- *
- * This function processes the source code character by character, recognizing
- * various tokens such as keywords, identifiers, numbers, strings, and
- * operators. It creates a linked list of tokens that can be further analyzed by
- * the parser.
- *
- * @param source_code The source code to be tokenized.
- * @return Token* A linked list of tokens representing the source code.
- */
 Token *lexer(const char *source_code) {
   Token *head = NULL;
   Token *tail = NULL;
@@ -80,50 +40,44 @@ Token *lexer(const char *source_code) {
   while (i < len) {
     char current_char = source_code[i];
 
-    // Skip whitespace characters
     if (isspace(current_char)) {
       i++;
       continue;
     }
 
-    // Skip single-line comments (denoted by a single quote)
     if (current_char == '\'') {
       while (i < len && source_code[i] != '\n')
         i++;
       continue;
     }
 
-    // Handle string literals (enclosed in double quotes)
     if (current_char == '"') {
       size_t start = i;
-      i++; // Skip opening double quote
+      i++; 
 
-      // Search for closing double quote
       while (i < len && source_code[i] != '"') {
         if (source_code[i] == '\\' && i + 1 < len) {
-          i += 2; // Skip escape character and the following character
+          i += 2; 
         } else {
           i++;
         }
       }
 
       if (i < len && source_code[i] == '"') {
-        i++; // Include the closing quote
+        i++; 
 
-        // Extract the entire string literal
         char *string_literal = strndup(&source_code[start], i - start);
         add_token(&head, &tail, TOKEN_STRING, string_literal);
         free(string_literal);
         continue;
       } else {
         fprintf(stderr, "Unterminated string literal\n");
-        // In case of error, continue with next character
+
         i = start + 1;
         continue;
       }
     }
 
-    // Handle &strlen& token (replaces [counter])
     if (current_char == '&') {
       if (strncmp(&source_code[i], "&strlen&", 8) == 0) {
         add_token(&head, &tail, TOKEN_STRLEN, "&strlen&");
@@ -132,16 +86,6 @@ Token *lexer(const char *source_code) {
       }
     }
 
-    // Backward compatibility for [counter]
-    if (current_char == '[') {
-      if (strncmp(&source_code[i], "[counter]", 9) == 0) {
-        add_token(&head, &tail, TOKEN_STRLEN, "[counter]");
-        i += 9;
-        continue;
-      }
-    }
-
-    // Handle various symbols
     if (current_char == '(') {
       add_token(&head, &tail, TOKEN_LPAREN, "(");
       i++;
@@ -173,7 +117,6 @@ Token *lexer(const char *source_code) {
       continue;
     }
 
-    // Handle keywords like "move", "add", "sub", etc.
     if (strncmp(&source_code[i], "move", 4) == 0 &&
         (i + 4 >= len || !isalnum(source_code[i + 4]))) {
       add_token(&head, &tail, TOKEN_MOVE, "move");
@@ -211,15 +154,13 @@ Token *lexer(const char *source_code) {
       continue;
     }
 
-    // Handle sys_call keyword
-    if (strncmp(&source_code[i], "sys_call", 8) == 0 &&
-        (i + 8 >= len || !isalnum(source_code[i + 8]))) {
-      add_token(&head, &tail, TOKEN_SYS_CALL, "sys_call");
-      i += 8;
+    if (strncmp(&source_code[i], "syscall", 7) == 0 &&
+        (i + 7 >= len || !isalnum(source_code[i + 7]))) {
+      add_token(&head, &tail, TOKEN_SYS_CALL, "syscall");
+      i += 7;
       continue;
     }
 
-    // Handle function (label) keywords
     if (strncmp(&source_code[i], "func", 4) == 0 &&
         (i + 4 >= len || isspace(source_code[i + 4]))) {
       add_token(&head, &tail, TOKEN_LABEL_KW, "func");
@@ -227,15 +168,6 @@ Token *lexer(const char *source_code) {
       continue;
     }
 
-    // Keep old "label" keyword for backward compatibility
-    if (strncmp(&source_code[i], "label", 5) == 0 &&
-        (i + 5 >= len || isspace(source_code[i + 5]))) {
-      add_token(&head, &tail, TOKEN_LABEL_KW, "label");
-      i += 5;
-      continue;
-    }
-
-    // Handle return keyword
     if (strncmp(&source_code[i], "return", 6) == 0 &&
         (i + 6 >= len || !isalnum(source_code[i + 6]))) {
       add_token(&head, &tail, TOKEN_RETURN, "return");
@@ -243,7 +175,6 @@ Token *lexer(const char *source_code) {
       continue;
     }
 
-    // Handle call keyword
     if (strncmp(&source_code[i], "call", 4) == 0 &&
         (i + 4 >= len || !isalnum(source_code[i + 4]))) {
       add_token(&head, &tail, TOKEN_CALL, "call");
@@ -251,15 +182,17 @@ Token *lexer(const char *source_code) {
       continue;
     }
 
-    // Handle identifiers
-    if (isalpha(current_char)) {
+    if (isalpha(current_char) || current_char == '&') {
       size_t start = i;
-      while (i < len && (isalnum(source_code[i]) || source_code[i] == '_'))
+      while (i < len && (isalnum(source_code[i]) || source_code[i] == '_' || source_code[i] == '&'))
         i++;
 
       char *identifier = strndup(&source_code[start], i - start);
 
-      if (identifier[0] == 'r' && strlen(identifier) >= 2 &&
+      if (identifier[0] == '&' && strlen(identifier) >= 2 &&
+          isdigit(identifier[1])) {
+        add_token(&head, &tail, TOKEN_IDENTIFIER, identifier);
+      } else if (identifier[0] == 'r' && strlen(identifier) >= 2 &&
           isdigit(identifier[1])) {
         add_token(&head, &tail, TOKEN_IDENTIFIER, identifier);
       } else {
@@ -270,7 +203,6 @@ Token *lexer(const char *source_code) {
       continue;
     }
 
-    // Handle numbers
     if (isdigit(current_char)) {
       size_t start = i;
       while (i < len && isdigit(source_code[i]))
@@ -281,7 +213,6 @@ Token *lexer(const char *source_code) {
       continue;
     }
 
-    // If no matching token is found, mark it as unknown
     add_token(&head, &tail, TOKEN_UNKNOWN, "UNKNOWN");
     i++;
   }
