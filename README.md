@@ -77,7 +77,7 @@ func label_name {
 
 ### Commands
 
-``` go
+``` c
 move(destination, source);     // Value assignment
 add(destination, value);       // Addition operation
 sub(destination, value);       // Subtraction operation
@@ -89,7 +89,7 @@ return();                      // Return
 
 ## syscall
 
-```go
+```c
 syscall(4, 1, "Hello", &strlen&);  // sys_write with auto string length
 ```
 
@@ -106,7 +106,7 @@ syscall(4, 1, "Hello", &strlen&);  // sys_write with auto string length
 
 ### String Support
 
-```go
+```c
 move(&3, "Hello World");    // Supports string literals
 move(&4, &strlen&);         // Automatic string length calculation
 ```
