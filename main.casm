@@ -1,10 +1,5 @@
+'Hello World Example
 
 func main {
 	syscall(4, 1, "Hello World", &strlen&);
-	syscall(4, 1, "hellOAgainWorld", &strlen&);
-	syscall(4, 1, "Helo", &strlen&);
-
-	move(&1, 1);
-	move(&2, 0);
-
 }
