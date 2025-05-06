@@ -7,7 +7,7 @@ CASM is a compiler that transforms a c-like assembly language into x86 NASM asse
 Below is a comparison of the same "Hello World" program written in CASM and NASM:
 
 ### Hello World in CASM
-``` c
+``` go
 func main {
     syscall(4, 1, "Hello World", &strlen&);    /* call sys_write */
 }
@@ -77,7 +77,7 @@ func label_name {
 
 ### Commands
 
-``` c
+``` go
 move(destination, source);     // Value assignment
 add(destination, value);       // Addition operation
 sub(destination, value);       // Subtraction operation
@@ -89,7 +89,7 @@ return();                      // Return
 
 ## syscall
 
-```c
+```go
 syscall(4, 1, "Hello", &strlen&);  // sys_write with auto string length
 ```
 
@@ -106,7 +106,7 @@ syscall(4, 1, "Hello", &strlen&);  // sys_write with auto string length
 
 ### String Support
 
-```
+```go
 move(&3, "Hello World");    // Supports string literals
 move(&4, &strlen&);         // Automatic string length calculation
 ```
