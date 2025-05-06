@@ -7,7 +7,16 @@
 
 int string_counter = 0;
 
-// Makrolar ve yardımcı fonksiyonlar
+typedef struct {
+    char *label;         
+    int length;          
+    char *string_value;  
+} StringInfo;
+
+#define MAX_STRINGS 100
+StringInfo string_infos[MAX_STRINGS];
+int string_info_count = 0;
+
 #define REGISTER_MAP(X) \
   X("&1", "eax") \
   X("&2", "ebx") \
@@ -61,126 +70,97 @@ int calculate_string_length(const char *string_value) {
   return actual_len;
 }
 
+char *add_string_info(const char *string_value) {
+    if (string_info_count >= MAX_STRINGS) {
+        fprintf(stderr, "Too many strings in the program!\n");
+        return NULL;
+    }
+
+    char *label = malloc(32);
+    sprintf(label, "str_%d", string_counter++);
+
+    int length = calculate_string_length(string_value);
+
+    string_infos[string_info_count].label = strdup(label);
+    string_infos[string_info_count].length = length;
+    string_infos[string_info_count].string_value = strdup(string_value);
+    string_info_count++;
+
+    return label;
+}
+
+int find_string_length(const char *label) {
+    for (int i = 0; i < string_info_count; i++) {
+        if (strcmp(string_infos[i].label, label) == 0) {
+            return string_infos[i].length;
+        }
+    }
+    return 0; 
+}
+
+int find_last_string_index(ASTNode *node) {
+    if (!node) return -1;
+
+    int last_string_index = -1;
+
+    ASTNode *param = node;
+    int index = 0;
+
+    while (param) {
+        if (param->type == TOKEN_STRING || param->type == TOKEN_LABEL) {
+            last_string_index = index;
+        }
+        param = param->next;
+        index++;
+    }
+
+    return last_string_index;
+}
+
 char *process_string_literal(const char *string_value, FILE *fp) {
-  char *label = malloc(32); 
-  sprintf(label, "str_%d", string_counter++);
+  char *label = add_string_info(string_value);
 
   fprintf(fp, "    %s db %s, 0\n", label, string_value);
 
   return label;
 }
 
-typedef struct {
-  char *value;    
-  char *label;    
-  int context_id; 
-} StringEntry;
+void handle_move(ASTNode *move_node, FILE *fp) {
+  if (!move_node->left || !move_node->right)
+    return;
 
-#define MAX_STRINGS 100
+  if (move_node->right->type == TOKEN_STRLEN) {
 
-StringEntry string_table[MAX_STRINGS];
-int string_table_count = 0;
-int current_context_id = 0;
+    ASTNode *current = move_node->prev;
+    const char *last_string_label = NULL;
 
-void add_string_to_table(const char *value, const char *label) {
-  if (string_table_count < MAX_STRINGS) {
-    string_table[string_table_count].value = strdup(value);
-    string_table[string_table_count].label = strdup(label);
-    string_table[string_table_count].context_id = current_context_id;
-    string_table_count++;
-  }
-}
-
-void start_new_string_context() { 
-  current_context_id++; 
-}
-
-const char *find_string_in_context(int context_id) {
-  for (int i = string_table_count - 1; i >= 0; i--) {
-    if (string_table[i].context_id == context_id) {
-      return string_table[i].value;
-    }
-  }
-
- if (context_id > 0) {
-  for (int i = string_table_count - 1; i >= 0; i--) {
-    if (string_table[i].value) {
-      return string_table[i].value;
-    }
-  }
-}
-
-  return NULL;
-}
-
-#define SAFE_STRDUP(ptr, val) do { \
-  free(ptr); \
-  ptr = strdup(val); \
-} while(0)
-
-void handle_move_with_strlen(ASTNode *move_node, FILE *fp) {
-  if (move_node->left && move_node->right &&
-      move_node->right->type == TOKEN_STRLEN) {
-
-    int move_context_id = current_context_id - 1;
-    const char *string_value = NULL;
-
-    ASTNode *current_node = move_node->prev;
-    while (current_node) {
-      if (current_node->type == TOKEN_MOVE && current_node->right &&
-          current_node->right->type == TOKEN_STRING) {
-        string_value = current_node->right->value;
-        break;
-      } else if (current_node->type == TOKEN_SYS_CALL && current_node->left) {
-        ASTNode *param = current_node->left;
-        while (param) {
-          if (param->type == TOKEN_STRING) {
-            string_value = param->value;
+    while (current) {
+        if (current->type == TOKEN_MOVE && current->right && 
+            (current->right->type == TOKEN_STRING || current->right->type == TOKEN_LABEL)) {
+            last_string_label = current->right->value;
             break;
-          }
-          param = param->next;
         }
-        if (string_value)
-          break;
-      }
-      current_node = current_node->prev;
+        current = current->prev;
     }
 
-    if (!string_value) {
-      string_value = find_string_in_context(move_context_id);
-    }
-
-    if (!string_value && string_table_count > 0) {
-      string_value = string_table[string_table_count - 1].value;
-    }
-
-    if (string_value) {
-      int str_len = calculate_string_length(string_value);
-      fprintf(fp, "    mov %s, %d\n",
-              translate_register(move_node->left->value), str_len);
-      return;
+    if (last_string_label) {
+        int length = find_string_length(last_string_label);
+        fprintf(fp, "    mov %s, %d\n", translate_register(move_node->left->value), length);
     } else {
-      fprintf(stderr, "Warning: No string found for string length token, "
-                      "defaulting to length 0\n");
-      fprintf(fp, "    mov %s, 0\n",
-              translate_register(move_node->left->value));
-      return;
+        fprintf(stderr, "Warning: No previous string found for strlen\n");
+        fprintf(fp, "    mov %s, 0\n", translate_register(move_node->left->value));
     }
+    return;
   }
 
   if (move_node->right->type == TOKEN_NUMBER) {
-    fprintf(fp, "    mov %s, %s\n", translate_register(move_node->left->value),
-            move_node->right->value);
+    fprintf(fp, "    mov %s, %s\n", translate_register(move_node->left->value), move_node->right->value);
   } else if (move_node->right->type == TOKEN_STRING) {
-    start_new_string_context();
-
     char *label = process_string_literal(move_node->right->value, fp);
-    add_string_to_table(move_node->right->value, label);
-    fprintf(fp, "    mov %s, %s\n", translate_register(move_node->left->value),
-            label);
+    fprintf(fp, "    mov %s, %s\n", translate_register(move_node->left->value), label);
     free(label);
   } else {
-    fprintf(fp, "    mov %s, %s\n", translate_register(move_node->left->value),
+    fprintf(fp, "    mov %s, %s\n", translate_register(move_node->left->value), 
             translate_register(move_node->right->value));
   }
 }
@@ -188,14 +168,13 @@ void handle_move_with_strlen(ASTNode *move_node, FILE *fp) {
 #define REG_MAP(index) (index < 7 ? reg_map[index] : "invalid_register")
 
 void process_syscall_parameters(ASTNode *syscall_node, FILE *fp) {
-  start_new_string_context();
-
   ASTNode *params = syscall_node->left;
   if (!params)
     return;
 
   ASTNode *param_array[7] = {NULL}; 
   int param_count = 0;
+  int string_param_index = -1;
 
   ASTNode *current = params;
   while (current && param_count < 7) {
@@ -203,7 +182,10 @@ void process_syscall_parameters(ASTNode *syscall_node, FILE *fp) {
 
     if (current->type == TOKEN_STRING) {
       char *label = process_string_literal(current->value, fp);
-      add_string_to_table(current->value, label);
+      free(current->value);
+      current->value = strdup(label);
+      current->type = TOKEN_LABEL;
+      string_param_index = param_count;
       free(label);
     }
 
@@ -211,98 +193,66 @@ void process_syscall_parameters(ASTNode *syscall_node, FILE *fp) {
     current = current->next;
   }
 
-  #define HANDLE_STRLEN_PARAM(param_index) do { \
-    const char *string_value = NULL; \
-    for (int j = param_index - 1; j >= 0; j--) { \
-      if (param_array[j] && param_array[j]->type == TOKEN_STRING) { \
-        string_value = param_array[j]->value; \
-        break; \
-      } \
-    } \
-    if (!string_value) { \
-      string_value = find_string_in_context(current_context_id); \
-    } \
-    if (string_value) { \
-      int str_len = calculate_string_length(string_value); \
-      free(param_array[param_index]->value); \
-      param_array[param_index]->value = malloc(16); \
-      sprintf(param_array[param_index]->value, "%d", str_len); \
-      param_array[param_index]->type = TOKEN_NUMBER; \
-    } else { \
-      fprintf(stderr, "Warning: No string found for string length token, " \
-                      "defaulting to length 0\n"); \
-      free(param_array[param_index]->value); \
-      param_array[param_index]->value = strdup("0"); \
-      param_array[param_index]->type = TOKEN_NUMBER; \
-    } \
-  } while(0)
-
   for (int i = 0; i < param_count; i++) {
     if (param_array[i] && param_array[i]->type == TOKEN_STRLEN) {
-      HANDLE_STRLEN_PARAM(i);
+
+      int found_string_index = -1;
+      for (int j = 0; j < param_count; j++) {
+        if (param_array[j] && param_array[j]->type == TOKEN_LABEL) {
+
+          if (strncmp(param_array[j]->value, "str_", 4) == 0) {
+            found_string_index = j;
+
+            string_param_index = j;
+          }
+        }
+      }
+
+      if (string_param_index != -1) {
+        char *string_label = param_array[string_param_index]->value;
+        int length = find_string_length(string_label);
+
+        free(param_array[i]->value);
+        char tmp[16];
+        sprintf(tmp, "%d", length);
+        param_array[i]->value = strdup(tmp);
+        param_array[i]->type = TOKEN_NUMBER;
+      } else {
+
+        fprintf(stderr, "Warning: No string parameter found for syscall with strlen\n");
+        free(param_array[i]->value);
+        param_array[i]->value = strdup("0");
+        param_array[i]->type = TOKEN_NUMBER;
+      }
     }
   }
-  #undef HANDLE_STRLEN_PARAM
 
   const char *reg_map[] = {"eax", "ebx", "ecx", "edx", "esi", "edi", "ebp"};
-  
-  #define SET_PARAM_TO_REG(param, reg_index) do { \
-    if (param->type == TOKEN_NUMBER) { \
-      fprintf(fp, "    mov %s, %s\n", REG_MAP(reg_index), param->value); \
-    } else if (param->type == TOKEN_STRING) { \
-      char *label = NULL; \
-      for (int j = 0; j < string_table_count; j++) { \
-        if (strcmp(string_table[j].value, param->value) == 0 && \
-            string_table[j].context_id == current_context_id) { \
-          label = strdup(string_table[j].label); \
-          break; \
-        } \
-      } \
-      if (!label) { \
-        label = process_string_literal(param->value, fp); \
-      } \
-      fprintf(fp, "    mov %s, %s\n", REG_MAP(reg_index), label); \
-      free(label); \
-    } else if (param->type == TOKEN_LABEL) { \
-      fprintf(fp, "    mov %s, %s\n", REG_MAP(reg_index), param->value); \
-    } else { \
-      fprintf(fp, "    mov %s, %s\n", REG_MAP(reg_index), \
-              translate_register(param->value)); \
-    } \
-  } while(0)
 
   for (int i = 0; i < param_count; i++) {
-    SET_PARAM_TO_REG(param_array[i], i);
+    if (param_array[i]) {
+      if (param_array[i]->type == TOKEN_NUMBER) {
+        fprintf(fp, "    mov %s, %s\n", REG_MAP(i), param_array[i]->value);
+      } else if (param_array[i]->type == TOKEN_LABEL) {
+        fprintf(fp, "    mov %s, %s\n", REG_MAP(i), param_array[i]->value);
+      } else {
+        fprintf(fp, "    mov %s, %s\n", REG_MAP(i), translate_register(param_array[i]->value));
+      }
+    }
   }
-  #undef SET_PARAM_TO_REG
 
   fprintf(fp, "    int 0x80\n");
 }
 
 void generate_block(FILE *fp, ASTNode *node, char **data_section_strings,
                     const char *func_name) {
-  ASTNode *current = node->left; 
-
-  int data_section_count = 0; 
-
-  if (current) {
-    ASTNode *prev = NULL;
-    ASTNode *temp = current;
-    while (temp) {
-      temp->prev = prev; 
-      prev = temp;
-      temp = temp->next;
-    }
-  }
-
-  current_context_id = 0;
+  ASTNode *current = node->left;
 
   while (current != NULL) {
     switch (current->type) {
     case TOKEN_MOVE:
       if (current->left && current->right) {
-        start_new_string_context();
-        handle_move_with_strlen(current, fp);
+        handle_move(current, fp);
       }
       break;
 
@@ -365,34 +315,11 @@ void generate_block(FILE *fp, ASTNode *node, char **data_section_strings,
   }
 }
 
-#define CLEANUP_STRING_TABLE() do { \
-  for (int i = 0; i < string_table_count; i++) { \
-    free(string_table[i].value); \
-    free(string_table[i].label); \
-  } \
-  string_table_count = 0; \
-  string_counter = 0; \
-  current_context_id = 0; \
-} while(0)
-
-#define PROCESS_STRING_NODE(node, fp) do { \
-  char *str_value = node->value; \
-  size_t len = strlen(str_value); \
-  if (len >= 2 && str_value[0] == '"' && str_value[len - 1] == '"') { \
-    char label[32]; \
-    sprintf(label, "str_%d", string_counter++); \
-    fprintf(fp, "    %s db %s, 0\n", label, str_value); \
-    add_string_to_table(str_value, label); \
-    free(node->value); \
-    node->value = strdup(label); \
-    node->type = TOKEN_LABEL; \
-  } \
-} while(0)
-
 void collect_strings(ASTNode *ast, FILE *fp) {
   fprintf(fp, "section .data\n");
-  
-  CLEANUP_STRING_TABLE();
+
+  string_counter = 0;
+  string_info_count = 0;
 
   ASTNode *current = ast;
   while (current != NULL) {
@@ -403,15 +330,33 @@ void collect_strings(ASTNode *ast, FILE *fp) {
         while (stmt != NULL) {
           if (stmt->type == TOKEN_MOVE && stmt->right &&
               stmt->right->type == TOKEN_STRING) {
-            PROCESS_STRING_NODE(stmt->right, fp);
+            char *str_value = stmt->right->value;
+            size_t len = strlen(str_value);
+            if (len >= 2 && str_value[0] == '"' && str_value[len - 1] == '"') {
+              char *label = add_string_info(str_value);
+              fprintf(fp, "    %s db %s, 0\n", label, str_value);
+
+              free(stmt->right->value);
+              stmt->right->value = strdup(label);
+              stmt->right->type = TOKEN_LABEL;
+              free(label);
+            }
           }
           else if (stmt->type == TOKEN_SYS_CALL) {
-            start_new_string_context();
-            
             ASTNode *param = stmt->left;
             while (param) {
               if (param->type == TOKEN_STRING) {
-                PROCESS_STRING_NODE(param, fp);
+                char *str_value = param->value;
+                size_t len = strlen(str_value);
+                if (len >= 2 && str_value[0] == '"' && str_value[len - 1] == '"') {
+                  char *label = add_string_info(str_value);
+                  fprintf(fp, "    %s db %s, 0\n", label, str_value);
+
+                  free(param->value);
+                  param->value = strdup(label);
+                  param->type = TOKEN_LABEL;
+                  free(label);
+                }
               }
               param = param->next;
             }
@@ -424,6 +369,14 @@ void collect_strings(ASTNode *ast, FILE *fp) {
   }
 
   fprintf(fp, "\n");
+}
+
+void cleanup_string_infos() {
+    for (int i = 0; i < string_info_count; i++) {
+        free(string_infos[i].label);
+        free(string_infos[i].string_value);
+    }
+    string_info_count = 0;
 }
 
 #define WRITE_EXIT_SECTION(fp) do { \
@@ -440,6 +393,8 @@ void generate_nasm(ASTNode *ast, const char *output_file) {
     fprintf(stderr, "Failed to open output file: %s\n", output_file);
     return;
   }
+
+  connect_prev_pointers(ast);
 
   collect_strings(ast, fp);
 
@@ -492,9 +447,8 @@ void generate_nasm(ASTNode *ast, const char *output_file) {
     fprintf(fp, "    jmp _exit\n");
   }
 
-  CLEANUP_STRING_TABLE();
-
   fclose(fp);
+  cleanup_string_infos();
 
   printf("NASM code successfully generated: %s\n", output_file);
 }
