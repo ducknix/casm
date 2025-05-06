@@ -7,9 +7,9 @@ CASM is a compiler that transforms a c-like assembly language into x86 NASM asse
 Below is a comparison of the same "Hello World" program written in CASM and NASM:
 
 ### Hello World in CASM
-```
+``` c
 func main {
-    syscall(4, 1, "Hello World", &strlen&);    'call sys_write
+    syscall(4, 1, "Hello World", &strlen&);    /* call sys_write */
 }
 ```
 
@@ -69,7 +69,7 @@ The CASM language consists of the following basic structures:
 
 ### Functions
 
-```
+```go
 func label_name {
     // Commands
 }
@@ -77,20 +77,20 @@ func label_name {
 
 ### Commands
 
-```
-move(destination, source);     ' Value assignment
-add(destination, value);       ' Addition operation
-sub(destination, value);       ' Subtraction operation
-compare(value1, value2);       ' Comparison
-jump(label);                   ' Unconditional jump
-jump_equal(label);             ' Jump if equal
-return();                      ' Return
+``` c
+move(destination, source);     // Value assignment
+add(destination, value);       // Addition operation
+sub(destination, value);       // Subtraction operation
+compare(value1, value2);       // Comparison
+jump(label);                   // Unconditional jump
+jump_equal(label);             // Jump if equal
+return();                      // Return
 ```
 
 ## syscall
 
-```
-syscall(4, 1, "Hello", &strlen&);  ' sys_write with auto string length
+```c
+syscall(4, 1, "Hello", &strlen&);  // sys_write with auto string length
 ```
 
 ### Registers
@@ -107,8 +107,8 @@ syscall(4, 1, "Hello", &strlen&);  ' sys_write with auto string length
 ### String Support
 
 ```
-move(&3, "Hello World");    ' Supports string literals
-move(&4, &strlen&);         ' Automatic string length calculation
+move(&3, "Hello World");    // Supports string literals
+move(&4, &strlen&);         // Automatic string length calculation
 ```
 
 This code is converted into a NASM assembly program that prints "Hello World" to standard output and exits.

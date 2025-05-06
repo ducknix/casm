@@ -44,11 +44,28 @@ Token *lexer(const char *source_code) {
       i++;
       continue;
     }
-
-    if (current_char == '\'') {
-      while (i < len && source_code[i] != '\n')
-        i++;
-      continue;
+    
+    if (current_char == '/' && i + 1 < len) {
+    
+      if (source_code[i + 1] == '/') {
+        i += 2;
+        while (i < len && source_code[i] != '\n')
+          i++;
+        continue;
+      }
+      // Multi-line comment: /* */
+      else if (source_code[i + 1] == '*') {
+        i += 2; 
+        while (i + 1 < len && !(source_code[i] == '*' && source_code[i + 1] == '/'))
+          i++;
+        
+        if (i + 1 < len)
+          i += 2; 
+        else
+          fprintf(stderr, "Warning: Unclosed multi-line comment\n");
+        
+        continue;
+      }
     }
 
     if (current_char == '"') {

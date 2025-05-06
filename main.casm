@@ -1,5 +1,15 @@
-'Hello World Example
+//Hello World Example
 
 func main {
 	syscall(4, 1, "Hello World", &strlen&);
+
+	/* OR:
+		move(&1, 4);
+		move(&2, 1);
+		move(&3, "Hello World Again!"),
+		move(&4, &strlen&);
+		call();
+
+	*/
 }
+
