@@ -168,6 +168,7 @@ Token *lexer(const char *source_code) {
       continue;
     }
 
+
     if (strncmp(&source_code[i], "return", 6) == 0 &&
         (i + 6 >= len || !isalnum(source_code[i + 6]))) {
       add_token(&head, &tail, TOKEN_RETURN, "return");

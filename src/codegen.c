@@ -102,11 +102,13 @@ const char *find_string_in_context(int context_id) {
     }
   }
 
-  if (context_id > 0) {
-    for (int i = string_table_count - 1; i >= 0; i--) {
+ if (context_id > 0) {
+  for (int i = string_table_count - 1; i >= 0; i--) {
+    if (string_table[i].value) {
       return string_table[i].value;
     }
   }
+}
 
   return NULL;
 }
@@ -120,7 +122,7 @@ void handle_move_with_strlen(ASTNode *move_node, FILE *fp) {
   if (move_node->left && move_node->right &&
       move_node->right->type == TOKEN_STRLEN) {
 
-    int move_context_id = current_context_id;
+    int move_context_id = current_context_id - 1;
     const char *string_value = NULL;
 
     ASTNode *current_node = move_node->prev;
