@@ -1,4 +1,5 @@
-
+// Hello World
+// filename: hello_world.casm
 
 func main {
 
