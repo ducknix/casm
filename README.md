@@ -84,7 +84,7 @@ sub(destination, value);       // Subtraction operation
 compare(value1, value2);       // Comparison
 jump(label);                   // Unconditional jump
 jump_equal(label);             // Jump if equal
-jump_not_equal(label)         // Jump if not equal
+jump_not_equal(label);        // Jump if not equal
 return();                      // Return
 ```
 
