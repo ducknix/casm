@@ -3,5 +3,12 @@
 @build
 gcc src/codegen.c src/lexer.c src/parser.c src/opts.c src/main.c -o ccasm
 
+@casm
+nasm -f elf32 main.asm
+ld -m elf_i386 main.o
+./a.out
+ 
+rm main.o a.out
+
 @install
 sudo cp ./ccasm /usr/bin/. -v

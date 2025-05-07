@@ -82,7 +82,7 @@ int main(int argc, char *argv[]) {
   source_code[file_size] = '\0';
   fclose(file);
 
-  Token *tokens = lexer(source_code);
+  Token *tokens = lexer(source_code, config.inputFile);
   if (!tokens) {
     fprintf(stderr, "Lexer error: Failed to generate tokens.\n");
     free(source_code);

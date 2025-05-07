@@ -1,4 +1,5 @@
 #include "codegen.h"
+#include "lexer.h"
 
 #include <stdbool.h>
 #include <stdio.h>
@@ -6,6 +7,7 @@
 #include <string.h>
 
 int string_counter = 0;
+int return_label_counter = 0;  // Counter for unique return labels
 
 typedef struct {
     char *label;         
@@ -16,6 +18,18 @@ typedef struct {
 #define MAX_STRINGS 100
 StringInfo string_infos[MAX_STRINGS];
 int string_info_count = 0;
+
+// Track function calls to generate proper return labels
+typedef struct {
+    char *caller_func;   // Name of the calling function
+    char *callee_func;   // Name of the called function
+    char *return_label;  // Generated return label
+    int used;           // Flag to mark if this return label has been used
+} FunctionCall;
+
+#define MAX_CALLS 100
+FunctionCall function_calls[MAX_CALLS];
+int function_call_count = 0;
 
 #define REGISTER_MAP(X) \
   X("&1", "eax") \
@@ -244,6 +258,45 @@ void process_syscall_parameters(ASTNode *syscall_node, FILE *fp) {
   fprintf(fp, "    int 0x80\n");
 }
 
+// Function to find an existing call or create a new one
+// Returns the index of the call in the function_calls array
+int register_function_call(const char* caller_func, const char* callee_func) {
+    // First check if we already have this call registered
+    for (int i = 0; i < function_call_count; i++) {
+        if (strcmp(function_calls[i].caller_func, caller_func) == 0 && 
+            strcmp(function_calls[i].callee_func, callee_func) == 0) {
+            return i; // We already have this call registered
+        }
+    }
+    
+    // If not, create a new entry
+    if (function_call_count >= MAX_CALLS) {
+        fprintf(stderr, "Too many function calls!\n");
+        return -1;
+    }
+    
+    char *label = malloc(64);
+    sprintf(label, "__backto_%s_%d", caller_func, function_call_count);
+    
+    function_calls[function_call_count].caller_func = strdup(caller_func);
+    function_calls[function_call_count].callee_func = strdup(callee_func);
+    function_calls[function_call_count].return_label = strdup(label);
+    function_calls[function_call_count].used = 0;
+    
+    free(label);
+    return function_call_count++;
+}
+
+// Generate a unique return label for function calls
+char* generate_return_label(const char* caller_func, const char* callee_func) {
+    int call_index = register_function_call(caller_func, callee_func);
+    if (call_index == -1) {
+        return strdup("__error_label");
+    }
+    
+    return strdup(function_calls[call_index].return_label);
+}
+
 void generate_block(FILE *fp, ASTNode *node, char **data_section_strings,
                     const char *func_name) {
   ASTNode *current = node->left;
@@ -280,6 +333,12 @@ void generate_block(FILE *fp, ASTNode *node, char **data_section_strings,
       }
       break;
 
+      case TOKEN_JUMP_NOT_EQUAL:
+      if (current->left) {
+        fprintf(fp, "    jne %s\n", current->left->value);
+      }
+      break;
+
     case TOKEN_JUMP_EQUAL:
       if (current->left) {
         fprintf(fp, "    je %s\n", current->left->value);
@@ -296,8 +355,18 @@ void generate_block(FILE *fp, ASTNode *node, char **data_section_strings,
 
     case TOKEN_CALL:
       if (current->left) {
-        fprintf(fp, "    int %s\n", current->left->value);
+        // Generate a unique return label for this function call
+        char* return_label = generate_return_label(func_name, current->left->value);
+        
+        // Jump to the target function
+        fprintf(fp, "    jmp %s\n", current->left->value);
+        
+        // Define the return label
+        fprintf(fp, "%s:\n", return_label);
+        
+        free(return_label);
       } else {
+        // Original implementation for syscalls
         fprintf(fp, "    int 0x80\n");
       }
       break;
@@ -371,12 +440,33 @@ void collect_strings(ASTNode *ast, FILE *fp) {
   fprintf(fp, "\n");
 }
 
+// Find the exact return label for a function call
+const char* find_return_label(const char* caller, const char* callee) {
+    for (int i = 0; i < function_call_count; i++) {
+        if (strcmp(function_calls[i].caller_func, caller) == 0 && 
+            strcmp(function_calls[i].callee_func, callee) == 0) {
+            function_calls[i].used = 1; // Mark this label as used
+            return function_calls[i].return_label;
+        }
+    }
+    return NULL;
+}
+
 void cleanup_string_infos() {
     for (int i = 0; i < string_info_count; i++) {
         free(string_infos[i].label);
         free(string_infos[i].string_value);
     }
     string_info_count = 0;
+}
+
+void cleanup_function_calls() {
+    for (int i = 0; i < function_call_count; i++) {
+        free(function_calls[i].caller_func);
+        free(function_calls[i].callee_func);
+        free(function_calls[i].return_label);
+    }
+    function_call_count = 0;
 }
 
 #define WRITE_EXIT_SECTION(fp) do { \
@@ -396,6 +486,29 @@ void generate_nasm(ASTNode *ast, const char *output_file) {
 
   connect_prev_pointers(ast);
 
+  // Reset counters and arrays
+  function_call_count = 0;
+
+  // First pass to pre-register all function calls
+  ASTNode *current = ast;
+  while (current != NULL) {
+    if (current->type == TOKEN_LABEL) {
+      const char* func_name = current->value;
+      
+      if (current->left && current->left->type == TOKEN_LBRACE) {
+        ASTNode *stmt = current->left->left;
+        while (stmt != NULL) {
+          if (stmt->type == TOKEN_CALL && stmt->left) {
+            // Register this function call
+            register_function_call(func_name, stmt->left->value);
+          }
+          stmt = stmt->next;
+        }
+      }
+    }
+    current = current->next;
+  }
+
   collect_strings(ast, fp);
 
   fprintf(fp, "section .text\n");
@@ -403,7 +516,7 @@ void generate_nasm(ASTNode *ast, const char *output_file) {
 
   WRITE_EXIT_SECTION(fp);
 
-  ASTNode *current = ast;
+  current = ast;
   bool found_main = false;
 
   while (current != NULL) {
@@ -429,12 +542,27 @@ void generate_nasm(ASTNode *ast, const char *output_file) {
         generate_block(fp, current->left, data_strings, current->value);
       }
 
+      // End of function handling
       if (strcmp(current->value, "main") == 0) {
         fprintf(fp, "    jmp _exit\n");
       } else {
-        fprintf(fp, "    ret\n");
+        // Find all functions that call this function
+        bool returnWritten = false;
+        for (int i = 0; i < function_call_count; i++) {
+            if (strcmp(function_calls[i].callee_func, current->value) == 0 && !function_calls[i].used) {
+                fprintf(fp, "    jmp %s\n", function_calls[i].return_label);
+                function_calls[i].used = 1; // Mark as used
+                returnWritten = true;
+                break;
+            }
+        }
+        
+        // If no function calls this function, add a return instruction
+        if (!returnWritten) {
+            fprintf(fp, "    ret\n");
+        }
       }
-
+      
       fprintf(fp, "\n");
     }
 
@@ -449,6 +577,7 @@ void generate_nasm(ASTNode *ast, const char *output_file) {
 
   fclose(fp);
   cleanup_string_infos();
+  cleanup_function_calls();
 
   printf("NASM code successfully generated: %s\n", output_file);
 }

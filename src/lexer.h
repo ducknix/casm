@@ -7,7 +7,8 @@ typedef enum {
   TOKEN_SUB,        
   TOKEN_COMPARE,    
   TOKEN_JUMP,       
-  TOKEN_JUMP_EQUAL, 
+  TOKEN_JUMP_EQUAL,
+  TOKEN_JUMP_NOT_EQUAL, 
   TOKEN_RETURN,     
   TOKEN_CALL,       
   TOKEN_SYS_CALL,   
@@ -29,14 +30,29 @@ typedef enum {
   TOKEN_UNKNOWN 
 } TokenType;
 
+typedef struct SourceLocation {
+  int line;           // Line number (1-based)
+  int column;         // Column number (1-based)
+  const char* file;   // Source file name (if available)
+} SourceLocation;
+
 typedef struct Token {
-  TokenType type;     
-  char *value;        
-  struct Token *next; 
+  TokenType type;          // Type of the token
+  char *value;             // String value of the token
+  struct Token *next;      // Next token in the list
+  SourceLocation location; // Source location information
 } Token;
 
-Token *lexer(const char *source_code);
+// Error handling
+void report_error(const SourceLocation* loc, const char* format, ...);
+void error_exit(const char* message);
 
+// Token creation and management
+Token *new_token(TokenType type, const char *value, int line, int column, const char* file);
 void free_tokens(Token *token);
+Token *lexer(const char *source_code, const char* filename);
 
-#endif 
+// String constants for token types (for debugging)
+extern const char* token_type_strings[];
+
+#endif
