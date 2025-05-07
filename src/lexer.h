@@ -31,16 +31,16 @@ typedef enum {
 } TokenType;
 
 typedef struct SourceLocation {
-  int line;           // Line number (1-based)
-  int column;         // Column number (1-based)
-  const char* file;   // Source file name (if available)
+  int line;           
+  int column;         
+  const char* file;   
 } SourceLocation;
 
 typedef struct Token {
-  TokenType type;          // Type of the token
-  char *value;             // String value of the token
-  struct Token *next;      // Next token in the list
-  SourceLocation location; // Source location information
+  TokenType type;     
+  char *value;        
+  struct Token *next; 
+  SourceLocation location;
 } Token;
 
 // Error handling

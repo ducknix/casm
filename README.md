@@ -84,6 +84,7 @@ sub(destination, value);       // Subtraction operation
 compare(value1, value2);       // Comparison
 jump(label);                   // Unconditional jump
 jump_equal(label);             // Jump if equal
+jump_not_equal(label)         // Jump if not equal
 return();                      // Return
 ```
 
@@ -116,7 +117,7 @@ This code is converted into a NASM assembly program that prints "Hello World" to
 
 ## TODO List
 
-- [x] Basic command support (move, add, sub, compare, jump, jump_equal)
+- [x] Basic command support (move, add, sub, compare, jump, jump_equal, ...)
 - [x] Label/Function support
 - [x] String literals support
 - [x] System call support (call, sys_call)
