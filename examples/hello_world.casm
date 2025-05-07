@@ -1,0 +1,17 @@
+
+
+func main {
+
+	syscall(4, 1, "Hello World", &strlen&);
+	call(greetings);
+}
+
+
+func greetings {
+	move(&1, 4);
+	move(&2, 1);
+	move(&3, "Greetings!");
+	move(&4, &strlen&);
+	call();
+
+}
